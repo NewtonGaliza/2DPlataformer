@@ -26,6 +26,7 @@ public class PlayerController : MonoBehaviour
     private bool isTouchingLedge;
     private bool canClimbLedge = false;
     private bool ledgeDetected;
+    private bool isDashing;
 
     private Vector2 ledgePositionBottom;
     private Vector2 ledgePosition1;
@@ -49,6 +50,14 @@ public class PlayerController : MonoBehaviour
     public float jumpTimerSet = 0.15f;
     public float turnTimerSet = 0.1f;
     public float wallJumpTimerSet = 0.5f;
+
+    public float dashTime;
+    public float dashSpeed;
+    public float distanceBetweenImages;
+    public float dashCoolDown;
+    private float dashTimeLeft;
+    private float lastImageXPosition;
+    private float lastDash = -100f;
 
     public float ledgeClimbXOffset1 = 0f;
     public float ledgeClimbYOffset1 = 0f;
@@ -86,6 +95,7 @@ public class PlayerController : MonoBehaviour
         CheckIfWallSliding();
         CheckJump();
         //CheckLedgeClimb();
+        CheckDash();
     }
 
     private void FixedUpdate() 
@@ -145,6 +155,51 @@ public class PlayerController : MonoBehaviour
         {
             checkJumpMultiplier = false;
             rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * variableJumpHeightMultiplier);
+        }
+
+        if(Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            if(Time.time >= (lastDash + dashCoolDown))
+            {
+                AttemptToDash();
+            }
+        }
+    }
+
+    private void AttemptToDash()
+    {
+        isDashing = true;
+        dashTimeLeft = dashTime;
+        lastDash = Time.time;
+        
+        PlayerAfterimagePool.Instance.GetFromPool();
+        lastImageXPosition = transform.position.x;
+    }
+
+    private void CheckDash()
+    {
+        if(isDashing)
+        {
+            if(dashTimeLeft > 0)
+            {
+                canMove = false;
+                canFlip = false;
+                rb.velocity = new Vector2(dashSpeed * facingDirection, rb.velocity.y);
+                dashTime -= Time.deltaTime;
+
+                if(Mathf.Abs(transform.position.x - lastImageXPosition) > distanceBetweenImages)
+                {
+                    PlayerAfterimagePool.Instance.GetFromPool();
+                    lastImageXPosition = transform.position.x;
+                }
+            }
+
+            if(dashTimeLeft <= 0 || isTouchingWall)
+            {
+                isDashing = false;
+                canMove = true;
+                canFlip = true;
+            }
         }
     }
 
@@ -290,6 +345,7 @@ public class PlayerController : MonoBehaviour
         if(isTouchingWall && !isTouchingLedge && !ledgeDetected)
         {
             ledgeDetected = true;
+            ledgePositionBottom = wallCheck.position;
         }
     }
 
@@ -358,12 +414,12 @@ public class PlayerController : MonoBehaviour
 
         }
 
-        /*
+        
         if(canClimbLedge)
         {
             transform.position = ledgePosition1;
         }
-        */
+        
     }
 
     public void FinishLedgeClimb()
